@@ -2,8 +2,23 @@
 title: "Market Basket Analysis"
 author: "Sergio Fuente Datacamp"
 date: "3/31/2020"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    fig_caption: true
+    code_folding: hide
 ---
+# Concepto
+
+# Algoritmo
+
+# Aplicaciones
+
+# Casos de exito
+
+# Ejemplo en R
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -34,45 +49,112 @@ library(plyr)
 library(dplyr)
 ```
 
-```{r}
+## Información del conjunto de datos
+
+En este tutorial, utilizará un conjunto de datos  de [UCI](https://archive.ics.uci.edu/ml/index.php) . El conjunto de datos se llama Online-Retail  y contiene datos de transacciones del 12/01/2010 al 12/09/2011 para una tienda minorista en línea registrada en el Reino Unido. 
+
+**Descripción del conjunto de datos**
+**Número de filas:** 541,909
+**Número de atributos:** 8
+
+### Información de atributo
+
++ **Factura No:** número de factura. Nominal, un número integral de 6 dígitos asignado exclusivamente a cada transacción. Si este código comienza con la letra 'c', indica una cancelación. + StockCode: Código de producto (artículo). Nominal, un número integral de 5 dígitos asignado exclusivamente a cada producto distinto.
+
++ **Descripción:** Nombre del producto (artículo). Nominal.
+
++ **Cantidad:** las cantidades de cada producto (artículo) por transacción. Numérico.
+
++ **Fecha de factura:** Fecha y hora de la factura. Numérico, el día y la hora en que se generó cada transacción. Ejemplo del conjunto de datos: 12/1/2010 8:26
+
++ **Precio unitario:** precio unitario. Numérico, precio del producto por unidad en libras esterlinas.
+
++ **CustomerID:** número de cliente. Nominal, un número entero de 5 dígitos asignado exclusivamente a cada cliente.
+
++ **País:** nombre del país. Nominal, el nombre del país donde reside cada cliente.
+
+Utilícelo read_excel(path to file)para leer el conjunto de datos del archivo descargado en R. Dé su ruta completa al archivo, incluido el nombre de archivo enread_excel(path-to-file-with-filename)
+
+```{r dataset}
 #read excel into R dataframe
 retail <- read_excel('/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MBA/Data/Online Retail.xlsx')
-#complete.cases(data) will return a logical vector indicating which rows have no missing values. Then use the vector to get only rows that are complete using retail[,].
+```
+
+## Paquetes a utilizar
+
+<style type="text/css">
+	table.tableizer-table {
+		font-size: 12px;
+		border: 1px solid #CCC; 
+		font-family: Arial, Helvetica, sans-serif;
+	} 
+	.tableizer-table td {
+		padding: 4px;
+		margin: 3px;
+		border: 1px solid #CCC;
+	}
+	.tableizer-table th {
+		background-color: #104E8B; 
+		color: #FFF;
+		font-weight: bold;
+	}
+</style>
+<table class="tableizer-table">
+<thead><tr class="tableizer-firstrow"><th>Paquete</th><th>Descripción</th></tr></thead><tbody>
+ <tr><td>arules</td><td>Proporciona la infraestructura para representar, manipular y analizar datos y patrones de transacciones (conjuntos de elementos frecuentes y reglas de asociación).</td></tr>
+ <tr><td>arulesViz</td><td>Extiende el paquete 'arules' con varias técnicas de visualización para reglas de asociación y conjuntos de elementos. El paquete también incluye varias visualizaciones interactivas para la exploración de reglas.</td></tr>
+ <tr><td>tidyverse</td><td>El tidyverse es una colección obvia de paquetes R diseñados para la ciencia de datos.</td></tr>
+ <tr><td>readxl</td><td>Leer archivos de Excel en R</td></tr>
+ <tr><td>plyr</td><td>Herramientas para dividir, aplicar y combinar datos</td></tr>
+ <tr><td>ggplot2</td><td>Crea gráficos y cuadros</td></tr>
+ <tr><td>knitr</td><td>Generación dinámica de informes en R</td></tr>
+ <tr><td>lubridate</td><td>Lubridate es un paquete R que facilita el trabajo con fechas y horas.</td></tr>
+</tbody></table>
+
+## Preparación de datos
+
+```{r manipulacion de datos I}
+
+#complete.cases(data) devolverá un vector lógico que indica qué filas no tienen valores faltantes. Luego use el vector para obtener solo las filas que están completas usando retail[,].
+
 retail <- retail[complete.cases(retail), ]
-#mutate function is from dplyr package. It is used to edit or add new columns to dataframe. Here Description column is being converted to factor column. as.factor converts column to factor column. %>% is an operator with which you may pipe values to another function or expression
+
+#mutate La función es del paquete dplyr. Se utiliza para editar o agregar nuevas columnas al marco de datos. Aquí la columna Descripción se está convirtiendo en columna de factor. as.factor convierte la columna en columna de factor. %>% es un operador con el que puede canalizar valores a otra función o expresión
 retail %>% mutate(Description = as.factor(Description))
 
 retail %>% mutate(Country = as.factor(Country))
 
-#Converts character data to date. Store InvoiceDate as date in new variable
+# Convierte datos de caracteres hasta la fecha. Almacenar Factura Fecha como fecha en nueva variable
 retail$Date <- as.Date(retail$InvoiceDate)
-#Extract time from InvoiceDate and store in another variable
+#Extraiga el tiempo de InvoiceDate y almacene en otra variable
 TransTime<- format(retail$InvoiceDate,"%H:%M:%S")
-#Convert and edit InvoiceNo into numeric
+#Convierta y edite Factura No en numérico
 InvoiceNo <- as.numeric(as.character(retail$InvoiceNo))
 
-#Bind new columns TransTime and InvoiceNo into dataframe retail
-cbind(retail,TransTime)
+# Vincula nuevas columnas TransTime y InvoiceNo al comercio minorista de marcos de datos
 
+cbind(retail,TransTime)
 cbind(retail,InvoiceNo)
 
-#get a glimpse of your data
+# echar un vistazo a sus datos
 glimpse(retail)
+
+
 ```
 
-```{r}
-#ddply(dataframe, variables_to_be_used_to_split_data_frame, function_to_be_applied)
+```{r manipulacion de datos II}
+
+#ddply(dataframe, variables que se utilizarán para dividir el marco de datos, función que se aplicará)
 transactionData <- ddply(retail,c("InvoiceNo","Date"),
                        function(df1)paste(df1$Description,
                        collapse = ","))
-#The R function paste() concatenates vectors to character and separated results using collapse=[any optional charcater string ]. Here ',' is used
-```
 
-```{r}
-transactionData
-```
+# La función de R paste() concatena vectores a caracteres y resultados separados usando collapse=[cualquier cadena de caracteres opcional]. Aquí usamos ','.
 
-```{r}
+glimpse(transactionData)
+
+head(transactionData)
+
 #set column InvoiceNo of dataframe transactionData  
 transactionData$InvoiceNo <- NULL
 #set column Date of dataframe transactionData
@@ -80,20 +162,20 @@ transactionData$Date <- NULL
 #Rename column to items
 colnames(transactionData) <- c("items")
 #Show Dataframe transactionData
-transactionData
+head(transactionData)
 ```
 
-```{r}
+```{r exportara csv, warning=FALSE}
 write.csv(transactionData,"/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MBA/Data/market_basket_transactions.csv", quote = FALSE, row.names = FALSE)
-#transactionData: Data to be written
-#"D:/Documents/market_basket.csv": location of file with file name to be written to
-#quote: If TRUE it will surround character or factor column with double quotes. If FALSE nothing will be quoted
-#row.names: either a logical value indicating whether the row names of x are to be written along with x, or a character vector of row names to be written.
-```
+387/5000
+#transactionData: datos que se escribirán
+# "D: /Documents/market_basket.csv": ubicación del archivo con el nombre del archivo en el que se escribirá
+#quote: si es VERDADERO, rodeará la columna de caracteres o factores con comillas dobles. Si FALSO no se citará nada
+# row.names: un valor lógico que indica si los nombres de fila de x deben escribirse junto con x, o un vector de caracteres de los nombres de fila que deben escribirse.
 
-```{r}
 tr <- read.transactions('/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MBA/Data/market_basket_transactions.csv', format = 'basket', sep=',')
-#sep tell how items are separated. In this case you have separated using ','
+
+#sep indica cómo se separan los elementos. En este caso te has separado usando ','
 
 summary(tr)
 ```
@@ -116,24 +198,24 @@ itemFrequencyPlot(tr,topN=20,type="relative",col=brewer.pal(8,'Pastel2'),main="R
 association.rules <- apriori(tr, parameter = list(supp=0.001, conf=0.8,maxlen=10))
 ```
 
-```{r}
+```{r,eval=FALSE}
 inspect(association.rules[1:10])
 ```
 
-```{r}
+```{r,eval=FALSE}
 shorter.association.rules <- apriori(tr, parameter = list(supp=0.001, conf=0.8,maxlen=3))
 ```
 
-```{r}
+```{r,eval=FALSE}
 subset.rules <- which(colSums(is.subset(association.rules, association.rules)) > 1) # get subset rules in vector
 length(subset.rules)  #> 3913
 ```
 
-```{r}
+```{r,eval=FALSE}
 subset.association.rules. <- association.rules[-subset.rules] # remove subset rules.
 ```
 
-```{r}
+```{r,eval=FALSE}
 metal.association.rules <- apriori(tr, parameter = list(supp=0.001, conf=0.8),appearance = list(default="lhs",rhs="METAL"))
 # Here lhs=METAL because you want to find out the probability of that in how many customers buy METAL along with other items
 inspect(head(metal.association.rules))
