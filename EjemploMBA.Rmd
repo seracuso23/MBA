@@ -3,12 +3,14 @@ title: "Market Basket Analysis"
 author: "Sergio Fuente Datacamp"
 date: "3/31/2020"
 output:
-  html_document:
-    toc: true
-    toc_float: true
-    df_print: paged
-    fig_caption: true
+  html_document: 
     code_folding: hide
+    fig_caption: yes
+    highlight: monochrome
+    theme: journal
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
 ---
 # Concepto
 
@@ -21,7 +23,7 @@ output:
 # Ejemplo en R
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = TRUE, message = TRUE )
 
 #install and load package arules
 #install.packages("arules")
@@ -120,27 +122,35 @@ retail <- read_excel('/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MBA/Dat
 retail <- retail[complete.cases(retail), ]
 
 #mutate La función es del paquete dplyr. Se utiliza para editar o agregar nuevas columnas al marco de datos. Aquí la columna Descripción se está convirtiendo en columna de factor. as.factor convierte la columna en columna de factor. %>% es un operador con el que puede canalizar valores a otra función o expresión
-retail %>% mutate(Description = as.factor(Description))
-
-retail %>% mutate(Country = as.factor(Country))
-
-# Convierte datos de caracteres hasta la fecha. Almacenar Factura Fecha como fecha en nueva variable
-retail$Date <- as.Date(retail$InvoiceDate)
-#Extraiga el tiempo de InvoiceDate y almacene en otra variable
-TransTime<- format(retail$InvoiceDate,"%H:%M:%S")
-#Convierta y edite Factura No en numérico
-InvoiceNo <- as.numeric(as.character(retail$InvoiceNo))
-
-# Vincula nuevas columnas TransTime y InvoiceNo al comercio minorista de marcos de datos
-
-cbind(retail,TransTime)
-cbind(retail,InvoiceNo)
+retail <- retail %>% 
+  mutate(Description = as.factor(Description),
+         Country = as.factor(Country),
+         #Convierta y edite Factura No en numérico
+         InvoiceNo = as.numeric(as.character(InvoiceNo)),
+         # Convierte datos de caracteres hasta la fecha. Almacenar Factura Fecha como fecha en nueva variable
+         Date = as.Date(InvoiceDate),
+         #Extraiga el tiempo de InvoiceDate y almacene en otra variable
+         TransTime = format(InvoiceDate,"%H:%M:%S")
+           
+         )
 
 # echar un vistazo a sus datos
 glimpse(retail)
 
 
 ```
+
+Ahora, la tabla de datos contendrá 10 atributos, con dos atributos adicionales Date y TransTime.
+
+Antes de aplicar el algoritmo de de reglas de asociación / Market Basket Analysis, necesitamos convertir la tabla de datos de transacciones para que todos los artículos que se compran juntos en una factura estén en una fila. 
+
+Puede ver en la tabla que cada transacción está en forma atómica, es decir, todos los productos que pertenecen a una factura estan en cada fila. Este formato también se llama como el formato individual.
+
+Lo que hay que hacer es agrupar datos en la trama de datos, ya sea por CustomerID, CustomerID y Date o también puede utilizar los datos del grupo InvoiceNo y Date. Necesitamos esta agrupación y le aplicamos una función y almacenamos la salida en otro marco de datos. Esto puede hacerse por ddply.
+
+Las siguientes líneas de código combinarán todos los productos de un mismo InvoiceNo y date en una fila, con cada artículo, separados por ","
+
+A continuación, como InvoiceNo y Date no serán de ninguna utilidad en la extracción de reglas, puede configurarlas en NULL, lo cual las eliminará de la tabla de datos "transactionData".
 
 ```{r manipulacion de datos II}
 
@@ -165,6 +175,8 @@ colnames(transactionData) <- c("items")
 head(transactionData)
 ```
 
+El formato de la tabla *transactionData* se denomina formato de cesta o basket. A continuación, debe almacenar estos datos de transacción en un archivo .csv (valores separados por comas). Para esto, se usa el comando write.csv()
+
 ```{r exportara csv, warning=FALSE}
 write.csv(transactionData,"/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MBA/Data/market_basket_transactions.csv", quote = FALSE, row.names = FALSE)
 387/5000
@@ -172,13 +184,22 @@ write.csv(transactionData,"/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MB
 # "D: /Documents/market_basket.csv": ubicación del archivo con el nombre del archivo en el que se escribirá
 #quote: si es VERDADERO, rodeará la columna de caracteres o factores con comillas dobles. Si FALSO no se citará nada
 # row.names: un valor lógico que indica si los nombres de fila de x deben escribirse junto con x, o un vector de caracteres de los nombres de fila que deben escribirse.
+```
 
+A continuación, debe cargar estos datos de transacción en un objeto de la clase transacción o "transactions". Esto se hace usando la función R read.transactions del paquete **arules**.
+
+```{r}
 tr <- read.transactions('/Users/sergio/Documents/Proyectos/Ejemplos Modelos/MBA/Data/market_basket_transactions.csv', format = 'basket', sep=',')
 
 #sep indica cómo se separan los elementos. En este caso te has separado usando ','
-
+head(tr)
 summary(tr)
 ```
+
+
+Cuando ejecuta las líneas de código anteriores, puede obtener una gran cantidad de EOF within quoted stringsu salida, no se preocupe por eso.
+
+Si ya tiene datos de transacción en un marco de datos, use la siguiente línea de código para convertirlo en objeto de transacción:
 
 ```{r}
 # Create an item frequency plot for the top 20 items
@@ -198,24 +219,24 @@ itemFrequencyPlot(tr,topN=20,type="relative",col=brewer.pal(8,'Pastel2'),main="R
 association.rules <- apriori(tr, parameter = list(supp=0.001, conf=0.8,maxlen=10))
 ```
 
-```{r,eval=FALSE}
+```{r}
 inspect(association.rules[1:10])
 ```
 
-```{r,eval=FALSE}
+```{r}
 shorter.association.rules <- apriori(tr, parameter = list(supp=0.001, conf=0.8,maxlen=3))
 ```
 
-```{r,eval=FALSE}
+```{r}
 subset.rules <- which(colSums(is.subset(association.rules, association.rules)) > 1) # get subset rules in vector
 length(subset.rules)  #> 3913
 ```
 
-```{r,eval=FALSE}
+```{r}
 subset.association.rules. <- association.rules[-subset.rules] # remove subset rules.
 ```
 
-```{r,eval=FALSE}
+```{r}
 metal.association.rules <- apriori(tr, parameter = list(supp=0.001, conf=0.8),appearance = list(default="lhs",rhs="METAL"))
 # Here lhs=METAL because you want to find out the probability of that in how many customers buy METAL along with other items
 inspect(head(metal.association.rules))
@@ -238,7 +259,7 @@ top10subRules <- head(subRules, n = 10, by = "confidence")
 
 plot(top10subRules, method = "graph",  engine = "htmlwidget")
 
-saveAsGraph(head(subRules, n = 1000, by = "lift"), file = "rules.graphml")
+#saveAsGraph(head(subRules, n = 1000, by = "lift"), file = "rules.graphml")
 
 # Filter top 20 rules with highest lift
 subRules2<-head(subRules, n=20, by="lift")
